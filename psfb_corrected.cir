@@ -1,0 +1,69 @@
+*============================================
+* Phase-Shifted Full Bridge DC-DC Converter (Corrected)
+* Input: 24VDC  Output: 12VDC @ 10A
+*============================================
+
+*----- Parameters -----
+.PARAM PhaseShift = 1.5u
+.PARAM Rload_val = 1.2
+
+* Power Supply
+V_in Vin 0 DC 24
+
+*----- Full Bridge Primary -----
+* Leading Leg (Q1 high, Q3 low) - Node A
+S_Q1 Vin A G1 0 SW
+S_Q3 A 0 G3 0 SW
+
+* Lagging Leg (Q2 high, Q4 low) - Node B  
+S_Q2 Vin B G2 0 SW
+S_Q4 B 0 G4 0 SW
+
+.MODEL SW SW (Ron=5m Roff=10Meg Vt=5 Vh=0.5)
+
+* Resonant Inductor (between A and B)
+Lr A B 15uH
+
+* Transformer Primary (connected to node A)
+Lp A Prim_N 100uH
+
+* Transformer Secondary
+Ls Sec_P Sec_N 100uH
+K_tr Lp Ls 0.995
+
+*----- Secondary Rectifier (Full Bridge) -----
+D1 Sec_P Out_P DSchottky
+D2 Out_N Sec_P DSchottky
+D3 Sec_N Out_P DSchottky
+D4 Out_N Sec_N DSchottky
+
+.MODEL DSchottky D (Is=1e-4 Rs=0.02 n=1.2)
+
+*----- Output Filter -----
+Lf Out_P Load_P 50uH
+Cout Load_P Load_N 1000u
+Rload Load_P Load_N {Rload_val}
+
+*----- Gate Drives (Phase Shifted) -----
+* Period = 10us (100kHz)
+* Q1, Q3: Leading leg - complementary
+* Q2, Q4: Lagging leg - complementary, phase shifted
+
+Vg1 G1 0 PULSE(0 12 0n 50n 50n 4.9u 10u)
+Vg3 G3 0 PULSE(12 0 0n 50n 50n 4.9u 10u)
+
+* Phase shifted lagging leg
+Vg2 G2 0 PULSE(0 12 {PhaseShift} 50n 50n 4.9u 10u)
+Vg4 G4 0 PULSE(12 0 {PhaseShift} 50n 50n 4.9u 10u)
+
+*----- Parameter Sweep -----
+.STEP PARAM PhaseShift 0.5u 4u 0.5u
+
+*----- Measurements -----
+.MEAS TRAN Vout AVG V(Load_P,Load_N)
+.MEAS TRAN Iout AVG I(Rload)
+
+*----- Simulation -----
+.TRAN 0 15m 0 100n STARTUP
+
+.END
