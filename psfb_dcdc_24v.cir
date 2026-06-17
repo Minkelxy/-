@@ -1,66 +1,56 @@
 *============================================
 * Phase-Shifted Full Bridge DC-DC Converter
 * Input: 24VDC  Output: 12VDC @ 10A
-* Switching Frequency: 100kHz
 *============================================
 
 * Power Supply
 V_in Vin 0 DC 24
 
-* Primary Ground
-GND 0 0
-
 *----- Primary Side -----
-* Leading Leg Switches (Q1, Q3)
-M_Lead_H Vin G1 S1 nmos W=10u L=0.5u
-M_Lead_L S1 G3 0 0 nmos W=10u L=0.5u
+* Leading Leg Switches using ideal switches
+S_Lead_H Vin G1 Switch1 0 SW
+S_Lead_L Switch1 G3 0 0 SW
 
-* Lagging Leg Switches (Q2, Q4) - Phase Shifted
-M_Lag_H Vin G2 S2 nmos W=10u L=0.5u
-M_Lag_L S2 G4 0 0 nmos W=10u L=0.5u
+* Lagging Leg Switches - Phase Shifted
+S_Lag_H Vin G2 Switch2 0 SW
+S_Lag_L Switch2 G4 0 0 SW
+
+.MODEL SW SW (Ron=10m Roff=10Meg Vt=5)
 
 * Resonant Inductor
-Lr S1 S2 12uH
+Lr Switch1 Switch2 12uH
 
-* Transformer Primary
-Lp S1 P_node 60uH
-
-* Transformer Secondary
+* Transformer
+Lp Switch1 P_node 60uH
 Ls S_node Out_P 60uH
 K_tr Lp Ls 0.998
 
 *----- Secondary Side -----
-* Center-tapped output with synchronous rectification
-D1 Out_P S_node D Schottky Vfwd=0.3
-D2 S_node Out_N D Schottky Vfwd=0.3
+* Diodes for rectification
+D1 Out_P S_node D Schottky
+D2 S_node Out_N D Schottky
 
 * Output Filter
 Lf Out_P Load_P 40uH
 Cout Load_P Load_N 470u
 Rload Load_P Load_N 1.2
 
-* Body diode connections (internal to MOSFETs)
-
 *----- Gate Drives -----
 * 100kHz period = 10us
-* Q1, Q3: 0-5us = ON (leading)
-* Q2, Q4: 2.5-7.5us = ON (lagging, 90deg phase shift)
+* Q1, Q3: 0-4.5us = ON (leading)
+* Q2, Q4: 2.5-7us = ON (lagging, 90deg phase shift)
 
-Vg1 G1 0 PULSE(0 10 0n 20n 20n 4.5u 10u)
-Vg3 G3 0 PULSE(10 0 0n 20n 20n 4.5u 10u)
+Vg1 G1 0 PULSE(0 15 0n 10n 10n 4.5u 10u)
+Vg3 G3 0 PULSE(15 0 0n 10n 10n 4.5u 10u)
 
-Vg2 G2 0 PULSE(0 10 2.5u 20n 20n 4.5u 10u)
-Vg4 G4 0 PULSE(10 0 2.5u 20n 20n 4.5u 10u)
+Vg2 G2 0 PULSE(0 15 2.5u 10n 10n 4.5u 10u)
+Vg4 G4 0 PULSE(15 0 2.5u 10n 10n 4.5u 10u)
 
 *----- Measurements -----
 .MEAS TRAN Voutput AVG V(Load_P,Load_N)
 .MEAS TRAN Ioutput AVG I(Rload)
-.MEAS TRAN Pin PARAM V(24)*I(V_in)
-.MEAS TRAN Pout PARAM V(Load_P,Load_N)*I(Rload)
-.MEAS TRAN Eff PARAM Pout/Pin*100
 
 *----- Simulation Control -----
 .TRAN 0 40m 0 50n STARTUP
-.OPTIONS PRECISE ABSVAR=1e-9 RELVAR=1e-6
 
 .END
