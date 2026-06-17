@@ -1,0 +1,69 @@
+* Phase Shift Full Bridge DC-DC Converter
+* Input: 24V, Output: 12V/10A
+* Specification by yant
+
+.INCLUDE 600V_nmos.inc
+.INCLUDE 600V_pmos.inc
+
+* Supply Voltage
+Vbus Vin 0 24
+
+* Primary Side Ground
+GND1 0 0 0
+
+* ============ Full Bridge Switches ============
+* Q1 = Leading leg high side
+* Q2 = Lagging leg high side
+* Q3 = Leading leg low side
+* Q4 = Lagging leg low side
+
+* Use behavioral switches for clean switching
+S_Q1 Vbus Q1g Switch1 0 SW
+S_Q2 Vbus Q2g Switch2 0 SW
+S_Q3 Switch1 Q3g 0 0 SW
+S_Q4 Switch2 Q4g 0 0 SW
+
+.MODEL SW SW (Ron=1m Roff=10Meg Vt=5)
+
+* ============ Gate Drivers ============
+* 100kHz switching = 10us period
+* Leading leg (Q1,Q3): 0-5us on, 5-10us off
+* Lagging leg (Q2,Q4): Phase shifted by 90deg (2.5us)
+
+Vg_Q1 Q1g 0 PULSE(0 12 0 5n 5n 4.5u 10u)
+Vg_Q3 Q3g 0 PULSE(12 0 0 5n 5n 4.5u 10u)
+
+* Phase-shifted lagging leg
+Vg_Q2 Q2g 0 PULSE(0 12 2.5u 5n 5n 4.5u 10u)
+Vg_Q4 Q4g 0 PULSE(12 0 2.5u 5n 5n 4.5u 10u)
+
+* ============ Resonant Components ============
+* Resonant inductor (includes transformer leakage)
+Lr Switch1 Switch2 15uH
+
+* ============ Transformer ============
+* 1:1 turns ratio for 24V to 12V (with 50% duty primary)
+K_tr Lp Ls 0.999
+Lp Switch1 Switch3 80uH
+Ls Out_P Out_N 80uH
+
+* ============ Output Filter ============
+* L-C filter for 12V output
+Lf Out_P Load_P 50uH
+Cf Load_P 0 470u
+
+Rload Load_P 0 1.2  ; 12V / 1.2Ω = 10A
+
+* ============ Measurement ============
+.MEAS TRAN Vout AVG V(Load_P)
+.MEAS TRAN Iout AVG I(Rload)
+.MEAS TRAN Pin AVG V(Vin)*I(Vbus)
+.MEAS TRAN Pout AVG V(Load_P)*I(Rload)
+.MEAS TRAN Eff PARAM Pout/Pin*100
+
+* ============ Simulation ============
+.TRAN 0 30m 0 10n STARTUP
+
+.OPTIONS METHOD=TRAP ABSSTEP=1n RELSTEP=1n
+
+.END

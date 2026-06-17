@@ -1,0 +1,65 @@
+* PSFB DC-DC Converter
+* Input: 24V, Output: 12V/10A
+* Switching Frequency: 100kHz
+
+Vin Vin 0 DC 24
+
+* Full Bridge Switches (4x MOSFETs)
+M1 Vin Q1g Switch1 Nch Rds=20m
+M2 Vin Q2g Switch2 Nch Rds=20m  
+M3 0 Q3g Switch1 Pch Rds=20m
+M4 0 Q4g Switch2 Pch Rds=20m
+
+* Anti-parallel body diodes (internal to MOSFET model)
+
+* Resonant Inductor
+Lr Switch1 Switch2 20uH
+
+* High Frequency Transformer (1:1 turns ratio)
+K1 Lp Ls 0.9999
+Lp Switch1 Switch3 50uH
+Ls Out_p Out_n 50uH
+
+* Output Filter
+Lf Out_p Load_p 100uH
+Cf Load_p 0 220u
+Rload Load_p 0 1.2
+
+* Gate Drive Sources (Phase Shift Control)
+* Q1 & Q3 = Leading Leg, Q2 & Q4 = Lagging Leg
+* Q2 is phase-shifted relative to Q1
+
+Vg1 Q1g 0 PULSE(0 12 0 10n 10n 5u 10u)
+Vg3 Q3g 0 PULSE(12 0 0 10n 10n 5u 10u)
+Vg2 Q2g 0 PULSE(0 12 2.5u 10n 10n 5u 10u)  ; 90-degree phase shift
+Vg4 Q4g 0 PULSE(12 0 2.5u 10n 10n 5u 10u)
+
+* Control to switch connection via voltage controlled switches
+S1 Switch1 Q1g 0 SW
+S2 Switch2 Q2g 0 SW
+S3 Switch1 Q3g 0 SW
+S4 Switch2 Q4g 0 SW
+
+* Switch model
+.MODEL SW SW Ron=1m Roff=10Meg Vt=5
+
+* Measurement statements
+.OPTIONS POST
+
+* Transient Analysis
+.TRAN 0 20m 0 1n
+
+* Control logic for phase shift (using behavioral modeling)
+* This creates proper 4-switch drive with deadtime
+
+* Output voltage measurement
+.MEAS TRAN Vout AVG V(Load_p)
+
+* Efficiency measurement
+.MEAS TRAN Pin AVG V(Vin)*I(Vin)
+.MEAS TRAN Pout AVG V(Load_p)*I(Rload)
+.MEAS TRAN Eff PARAM Pout/Pin*100
+
+.PRINT TRAN V(Load_p) V(Switch1) I(Lr)
+
+.END
