@@ -27,8 +27,11 @@ K_tr Lp Ls 0.998
 
 *----- Secondary Side -----
 * Diodes for rectification
-D1 Out_P S_node D Schottky
-D2 S_node Out_N D Schottky
+D1 Out_P S_node DSchottky
+D2 S_node Out_N DSchottky
+
+* Diode Models (Standard LTspice Diode)
+.MODEL DSchottky D (Is=1e-4 Rs=0.05 n=1.5)
 
 * Output Filter
 Lf Out_P Load_P 40uH
