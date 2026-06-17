@@ -1,0 +1,72 @@
+*============================================
+* Phase-Shifted Full Bridge DC-DC Converter
+* Input: 24VDC  Output: 12VDC @ 10A
+* With Parameter Sweep for Dynamic Analysis
+*============================================
+
+*----- Define Parameters -----
+.PARAM Vin_val = 24
+.PARAM PhaseShift = 2.5u    ; 可调整移相时间
+.PARAM Rload_val = 1.2      ; 可调整负载电阻
+.PARAM Lr_val = 12uH        ; 可调整谐振电感
+
+* Power Supply
+V_in Vin 0 DC {Vin_val}
+
+*----- Primary Side -----
+* Leading Leg Switches
+S_Lead_H Vin G1 Switch1 0 SW
+S_Lead_L Switch1 G3 0 0 SW
+
+* Lagging Leg Switches - Phase Shifted
+S_Lag_H Vin G2 Switch2 0 SW
+S_Lag_L Switch2 G4 0 0 SW
+
+.MODEL SW SW (Ron=10m Roff=10Meg Vt=5)
+
+* Resonant Inductor
+Lr Switch1 Switch2 {Lr_val}
+
+* Transformer
+Lp Switch1 P_node 60uH
+Ls S_node Out_P 60uH
+K_tr Lp Ls 0.998
+
+*----- Secondary Side -----
+D1 Out_P S_node DSchottky
+D2 S_node Out_N DSchottky
+
+.MODEL DSchottky D (Is=1e-4 Rs=0.05 n=1.5)
+
+* Output Filter
+Lf Out_P Load_P 40uH
+Cout Load_P Load_N 470u
+Rload Load_P Load_N {Rload_val}
+
+*----- Gate Drives -----
+* 使用参数化的移相时间
+Vg1 G1 0 PULSE(0 15 0n 10n 10n 4.5u 10u)
+Vg3 G3 0 PULSE(15 0 0n 10n 10n 4.5u 10u)
+
+Vg2 G2 0 PULSE(0 15 {PhaseShift} 10n 10n 4.5u 10u)
+Vg4 G4 0 PULSE(15 0 {PhaseShift} 10n 10n 4.5u 10u)
+
+*----- Parameter Sweep -----
+* 扫描移相角度 (0.5u ~ 4.5u)
+.STEP PARAM PhaseShift 0.5u 4.5u 0.5u
+
+* 或者扫描负载电阻 (取消注释启用)
+*.STEP PARAM Rload_val 0.5 5 0.5
+
+* 或者扫描输入电压 (取消注释启用)
+*.STEP PARAM Vin_val 20 30 2
+
+*----- Measurements -----
+.MEAS TRAN Voutput AVG V(Load_P,Load_N)
+.MEAS TRAN Ioutput AVG I(Rload)
+.MEAS TRAN Efficiency PARAM Voutput*Ioutput/V(Vin)*I(V_in)*100
+
+*----- Simulation Control -----
+.TRAN 0 20m 0 50n STARTUP
+
+.END
